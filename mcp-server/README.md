@@ -32,8 +32,8 @@ controls:
 | `WACRM_ENABLE_BROADCASTS` | no       | `true` to expose mass broadcasts (needs `WACRM_ENABLE_WRITES`)         |
 | `WACRM_ENABLE_WEBHOOKS`   | no       | `true` to expose webhook management tools                              |
 | `WACRM_SCOPE_FILTER`      | no       | Comma-separated scopes to explicitly allow; otherwise the key's scopes |
-| `WACRM_HTTP_PORT`         | no       | Start HTTP + SSE transport on this port (optional)                     |
-| `WACRM_HTTP_AUTH_TOKEN`   | no       | Optional bearer token required for HTTP/SSE connections                |
+| `WACRM_HTTP_PORT`         | no       | Start Streamable HTTP transport on this port (optional)                |
+| `WACRM_HTTP_AUTH_TOKEN`   | no       | Optional bearer token required for Streamable HTTP connections         |
 
 ### Claude Desktop / Claude Code / Cursor
 
@@ -75,7 +75,7 @@ To enable webhooks management, also set:
 }
 ```
 
-To expose HTTP/SSE transport for web-based agents, set a port and
+To expose Streamable HTTP transport for web-based agents, set a port and
 optionally require a bearer token:
 
 ```jsonc
@@ -88,10 +88,10 @@ optionally require a bearer token:
 ### Connecting Claude, Hermes, or other agents
 
 - `Claude Desktop` / `Claude Code` / `Cursor`: use the `stdio` MCP transport with the `npx wacrm-mcp` command in your client config.
-- `Claude` web or browser-based MCP tooling: use `WACRM_HTTP_PORT` and `WACRM_HTTP_AUTH_TOKEN`, then point the client at `http://localhost:<port>/sse` and `http://localhost:<port>/message`.
-- `Hermes` / custom HTTP agent: the server supports SSE, so connect to `/sse` for events and POST to `/message` with `sessionId`.
+- `Claude` web or browser-based MCP tooling: use `WACRM_HTTP_PORT` and `WACRM_HTTP_AUTH_TOKEN`, then point the client at `http://localhost:<port>/mcp`.
+- `Hermes` / custom HTTP agent: use the Streamable HTTP route at `/mcp`. Initialize with `POST /mcp`, then reuse the returned `mcp-session-id` header for later `POST`, `GET`, and `DELETE` requests.
 
-Example for agents that prefer HTTP/SSE:
+Example for agents that prefer Streamable HTTP:
 
 ```bash
 export WACRM_BASE_URL=https://crm.example.com
@@ -104,8 +104,8 @@ node dist/index.js
 
 Then configure the agent to use:
 
-- SSE endpoint: `http://localhost:3001/sse`
-- message endpoint: `http://localhost:3001/message`
+- MCP endpoint: `http://localhost:3001/mcp`
+- health endpoint: `http://localhost:3001/health`
 
 ## Tools
 
@@ -121,10 +121,32 @@ when their guard is set.
 | `get_conversation`   | read      | `conversations:read` | Read one conversation                           |
 | `list_messages`      | read      | `messages:read`      | List a conversation's messages                  |
 | `get_broadcast`      | read      | `broadcasts:send`    | Poll a broadcast's delivery status              |
-| `send_message`       | write     | `messages:send`      | Send a WhatsApp message (text/template/media)   |
+| `send_message`       | write     | `messages:send`      | Send a WhatsApp message (text/template/media attachments) |
 | `create_contact`     | write     | `contacts:write`     | Create (find-or-create) a contact               |
 | `update_contact`     | write     | `contacts:write`     | Update a contact / replace its tags             |
 | `send_broadcast`     | broadcast | `broadcasts:send`    | Launch a template broadcast (requires `confirm`)|
+
+`send_message` accepts `media_url`, `mediaUrl`, or `attachments`.
+Multiple attachments are sent as separate WhatsApp media messages.
+`send_broadcast` is intentionally template-only until the public
+broadcast API supports media fan-out; media fields are rejected rather
+than silently ignored.
+
+## Resources and prompts
+
+Resources:
+
+- `wacrm://chats/unread` - unread open/pending chats for live inbox context.
+- `ansury://conversations/open` and `ansury://conversations/pending` - recent conversation lists.
+- `ansury://contacts/recent` and `ansury://account` - contact/account context.
+
+Prompts:
+
+- `triage-inbox`
+- `contact-summary`
+- `draft-reply`
+- `plan-broadcast`
+- `setup-webhook`
 
 ## Safety model
 

@@ -61,14 +61,14 @@
         },
         {
           "name": "WACRM_HTTP_PORT",
-          "description": "Optional port to enable HTTP/SSE transport in addition to stdio.",
+          "description": "Optional port to enable Streamable HTTP transport in addition to stdio.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"
         },
         {
           "name": "WACRM_HTTP_AUTH_TOKEN",
-          "description": "Optional bearer token required for HTTP/SSE connections.",
+          "description": "Optional bearer token required for Streamable HTTP connections.",
           "isRequired": false,
           "isSecret": true,
           "format": "string"

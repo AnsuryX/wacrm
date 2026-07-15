@@ -9,7 +9,7 @@
 //      key actually carries.
 //   3. The API key's own scopes, enforced server-side on every call.
 //
-// Transport: stdio is always on. HTTP/SSE is opt-in via WACRM_HTTP_PORT.
+// Transport: stdio is always on. Streamable HTTP is opt-in via WACRM_HTTP_PORT.
 // ============================================================
 
 export interface Config {
@@ -20,7 +20,7 @@ export interface Config {
   enableWebhooks: boolean;
   /** Explicit scope allowlist. Empty = no extra restriction beyond the key's own scopes. */
   scopeFilter: string[];
-  /** HTTP port for SSE+HTTP transport. 0 = disabled (stdio only). */
+  /** HTTP port for Streamable HTTP transport. 0 = disabled (stdio only). */
   httpPort: number;
   /** Optional bearer token required to connect via HTTP transport. */
   httpAuthToken: string | null;

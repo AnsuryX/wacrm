@@ -1,6 +1,6 @@
 # wacrm MCP usage guide
 
-This guide shows how to run the `wacrm-mcp` server, secure it, and connect it to AI agents such as Claude Desktop, Claude Code, Cursor, and HTTP/SSE-capable agents.
+This guide shows how to run the `wacrm-mcp` server, secure it, and connect it to AI agents such as Claude Desktop, Claude Code, Cursor, and Streamable HTTP-capable agents.
 
 Your dashboard is available at https://wacrm-nu.vercel.app/
 
@@ -28,7 +28,7 @@ Optional controls:
 - `WACRM_ENABLE_BROADCASTS=true`: expose broadcast tools
 - `WACRM_ENABLE_WEBHOOKS=true`: expose webhook management tools
 - `WACRM_SCOPE_FILTER=contacts:read,conversations:read`: explicitly allow only these scopes
-- `WACRM_HTTP_PORT=3001`: run HTTP/SSE transport
+- `WACRM_HTTP_PORT=3001`: run Streamable HTTP transport
 - `WACRM_HTTP_AUTH_TOKEN=supersecret`: require bearer token on HTTP connections
 
 ## 3. Run the server
@@ -52,7 +52,7 @@ WACRM_ENABLE_WEBHOOKS=true \
 node dist/index.js
 ```
 
-### HTTP/SSE transport for web-based agents
+### Streamable HTTP transport for web-based agents
 
 ```bash
 WACRM_BASE_URL=https://wacrm-nu.vercel.app \
@@ -66,8 +66,9 @@ node dist/index.js
 This exposes:
 
 - `GET /health`
-- `GET /sse`
-- `POST /message?sessionId=<id>`
+- `POST /mcp`
+- `GET /mcp`
+- `DELETE /mcp`
 
 ## 4. Connect Claude Desktop / Claude Code / Cursor
 
@@ -97,17 +98,20 @@ Example `claude_desktop_config.json` or `.mcp.json`:
 
 For read-only use, omit `WACRM_ENABLE_WRITES`. That ensures the assistant cannot send messages or modify contacts.
 
-## 5. Connect web/SSE agents like Claude or Hermes
+## 5. Connect web agents like Claude or Hermes
 
-For agents that support HTTP/SSE, point them at the running MCP server endpoints.
+For agents that support Streamable HTTP, point them at the running MCP server endpoint.
 
 Example configuration:
 
-- SSE endpoint: `http://localhost:3001/sse`
-- message endpoint: `http://localhost:3001/message`
+- MCP endpoint: `http://localhost:3001/mcp`
 - auth header: `Authorization: Bearer supersecret`
 
 If using `WACRM_HTTP_AUTH_TOKEN`, every HTTP client must send the bearer token.
+
+Initialize with `POST /mcp`. The server returns an `mcp-session-id`
+header; send that header on later `POST /mcp` requests, `GET /mcp`
+stream connections, and `DELETE /mcp` session termination requests.
 
 ## 6. Tool availability and scopes
 
@@ -155,6 +159,7 @@ The assistant can create, update, and delete webhook endpoints via the MCP tools
 - If the agent cannot see writes, verify `WACRM_ENABLE_WRITES=true` and the API key includes `messages:send`.
 - If the HTTP agent cannot connect, verify `WACRM_HTTP_PORT` and `WACRM_HTTP_AUTH_TOKEN`.
 - If the assistant sees no tools, check `WACRM_SCOPE_FILTER` and the actual scopes returned by the key.
+- If an older client asks for `/sse` or `/message`, upgrade it to Streamable HTTP and use `/mcp`.
 
 ## 9. Recommended workflow
 

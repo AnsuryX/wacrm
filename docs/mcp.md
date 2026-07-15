@@ -47,6 +47,10 @@ data or send messages, add `"WACRM_ENABLE_WRITES": "true"` (and
 - **Writes (opt-in):** send a message, create/update a contact.
 - **Broadcasts (opt-in):** launch a template broadcast — requires an
   explicit `confirm` and is marked destructive.
+- **Resources:** `wacrm://chats/unread` exposes unread open/pending
+  chats as refreshable context.
+- **Prompts:** `triage-inbox`, `contact-summary`, `draft-reply`,
+  `plan-broadcast`, and `setup-webhook`.
 
 ## Safety
 
@@ -57,5 +61,5 @@ physically cannot send anything. See the
 [server README](../mcp-server/README.md) for the full tool list and
 safety model.
 
-For a longer usage guide and examples for Claude, Hermes, and HTTP/SSE
+For a longer usage guide and examples for Claude, Hermes, and Streamable HTTP
 agents, see [MCP usage guide](./mcp-usage.md).
