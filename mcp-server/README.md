@@ -21,15 +21,19 @@ wacrm instance — this server just exposes the API as MCP tools.
 
 ## Install & configure
 
-The server reads two required environment variables and two optional
-write guards:
+The server reads two required environment variables and several optional
+controls:
 
-| Variable                  | Required | Purpose                                                        |
-| ------------------------- | -------- | -------------------------------------------------------------- |
-| `WACRM_BASE_URL`          | yes      | Your instance URL, e.g. `https://crm.example.com`              |
-| `WACRM_API_KEY`           | yes      | An API key from the dashboard                                  |
-| `WACRM_ENABLE_WRITES`     | no       | `true` to expose contact writes + message sending             |
-| `WACRM_ENABLE_BROADCASTS` | no       | `true` to expose mass broadcasts (needs `WACRM_ENABLE_WRITES`) |
+| Variable                  | Required | Purpose                                                                 |
+| ------------------------- | -------- | ----------------------------------------------------------------------- |
+| `WACRM_BASE_URL`          | yes      | Your instance URL, e.g. `https://crm.example.com`                       |
+| `WACRM_API_KEY`           | yes      | An API key from the dashboard                                           |
+| `WACRM_ENABLE_WRITES`     | no       | `true` to expose contact writes + message sending                      |
+| `WACRM_ENABLE_BROADCASTS` | no       | `true` to expose mass broadcasts (needs `WACRM_ENABLE_WRITES`)         |
+| `WACRM_ENABLE_WEBHOOKS`   | no       | `true` to expose webhook management tools                              |
+| `WACRM_SCOPE_FILTER`      | no       | Comma-separated scopes to explicitly allow; otherwise the key's scopes |
+| `WACRM_HTTP_PORT`         | no       | Start HTTP + SSE transport on this port (optional)                     |
+| `WACRM_HTTP_AUTH_TOKEN`   | no       | Optional bearer token required for HTTP/SSE connections                |
 
 ### Claude Desktop / Claude Code / Cursor
 
@@ -62,6 +66,46 @@ assistant change data or send messages, add the write guards:
   "WACRM_ENABLE_BROADCASTS": "true"
 }
 ```
+
+To enable webhooks management, also set:
+
+```jsonc
+"env": {
+  "WACRM_ENABLE_WEBHOOKS": "true"
+}
+```
+
+To expose HTTP/SSE transport for web-based agents, set a port and
+optionally require a bearer token:
+
+```jsonc
+"env": {
+  "WACRM_HTTP_PORT": "3001",
+  "WACRM_HTTP_AUTH_TOKEN": "supersecret"
+}
+```
+
+### Connecting Claude, Hermes, or other agents
+
+- `Claude Desktop` / `Claude Code` / `Cursor`: use the `stdio` MCP transport with the `npx wacrm-mcp` command in your client config.
+- `Claude` web or browser-based MCP tooling: use `WACRM_HTTP_PORT` and `WACRM_HTTP_AUTH_TOKEN`, then point the client at `http://localhost:<port>/sse` and `http://localhost:<port>/message`.
+- `Hermes` / custom HTTP agent: the server supports SSE, so connect to `/sse` for events and POST to `/message` with `sessionId`.
+
+Example for agents that prefer HTTP/SSE:
+
+```bash
+export WACRM_BASE_URL=https://crm.example.com
+export WACRM_API_KEY=wacrm_live_xxx
+export WACRM_ENABLE_WRITES=true
+export WACRM_HTTP_PORT=3001
+export WACRM_HTTP_AUTH_TOKEN=supersecret
+node dist/index.js
+```
+
+Then configure the agent to use:
+
+- SSE endpoint: `http://localhost:3001/sse`
+- message endpoint: `http://localhost:3001/message`
 
 ## Tools
 

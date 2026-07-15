@@ -1,12 +1,7 @@
 // ============================================================
-// Broadcast tool — the highest-risk action.
-//
-// Registered only when BOTH WACRM_ENABLE_WRITES and
-// WACRM_ENABLE_BROADCASTS are set. A single call can message up to
-// 1000 people, so on top of the env gate the tool requires an
-// explicit `confirm: true` argument — the model must consciously opt
-// in, and a client that echoes tool args gives the user a last look.
-// Marked destructive so hosts prompt before running it.
+// Broadcast tool — highest-risk action.
+// Requires WACRM_ENABLE_WRITES + WACRM_ENABLE_BROADCASTS.
+// Also requires explicit confirm=true at call time.
 // ============================================================
 
 import { z } from 'zod';
@@ -20,19 +15,23 @@ export function registerBroadcastTools(server: McpServer, client: WacrmClient): 
     {
       title: 'Send broadcast',
       description:
-        'Launch a template broadcast to a list of recipients (up to 1000). This sends a real WhatsApp template message to every recipient — a mass, irreversible action. You MUST set confirm=true, and you should show the full recipient list and template to the user for approval before calling. The call returns fast; poll get_broadcast for delivery progress.',
+        'Launch a WhatsApp template broadcast to up to 1000 recipients. ' +
+        'This sends a REAL message to every recipient in the list — a mass, ' +
+        'irreversible action. You MUST set confirm=true and show the full ' +
+        'recipient list and template to the user for explicit approval first. ' +
+        'The call returns fast; use get_broadcast to poll delivery progress.',
       inputSchema: {
-        name: z.string().describe('A name for this broadcast campaign (for your own reference).'),
+        name: z.string().describe('Campaign name (internal reference).'),
         template_name: z.string().describe('Meta-approved template name.'),
         template_language: z.string().describe('Template language code, e.g. "en_US".'),
         recipients: z
           .array(
             z.object({
-              to: z.string().describe('Recipient phone number in E.164 format.'),
+              to: z.string().describe('Recipient phone in E.164 format.'),
               params: z
                 .array(z.string())
                 .optional()
-                .describe('Positional template body variables for this recipient.'),
+                .describe('Positional body variables for this recipient.'),
             }),
           )
           .min(1)
@@ -40,7 +39,10 @@ export function registerBroadcastTools(server: McpServer, client: WacrmClient): 
           .describe('Recipients (1–1000). Invalid numbers are dropped and counted as rejected.'),
         confirm: z
           .boolean()
-          .describe('Must be true to actually send. A safety gate against accidental mass sends.'),
+          .describe(
+            'MUST be true to send. This is a safety gate — the model must ' +
+              'consciously set this after the user approves the send.',
+          ),
       },
       annotations: {
         title: 'Send broadcast',
@@ -52,9 +54,9 @@ export function registerBroadcastTools(server: McpServer, client: WacrmClient): 
     handle(async ({ confirm, ...body }) => {
       if (confirm !== true) {
         return errorResult(
-          'Refusing to send: confirm must be true. This launches a mass broadcast to ' +
-            `${body.recipients.length} recipient(s). Confirm the recipient list and template ` +
-            'with the user, then call again with confirm=true.',
+          `Refusing to send: confirm must be true.\n` +
+            `This will broadcast to ${(body as { recipients: unknown[] }).recipients.length} recipient(s).\n` +
+            `Show the recipient list and template to the user, get explicit approval, then call again with confirm=true.`,
         );
       }
       return jsonResult(await client.sendBroadcast(body));

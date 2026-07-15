@@ -44,6 +44,34 @@
           "isRequired": false,
           "isSecret": false,
           "format": "string"
+        },
+        {
+          "name": "WACRM_ENABLE_WEBHOOKS",
+          "description": "Set to true to expose webhook management tools.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "WACRM_SCOPE_FILTER",
+          "description": "Comma-separated list of scopes to further restrict visible tools beyond the API key.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "WACRM_HTTP_PORT",
+          "description": "Optional port to enable HTTP/SSE transport in addition to stdio.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "WACRM_HTTP_AUTH_TOKEN",
+          "description": "Optional bearer token required for HTTP/SSE connections.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
         }
       ]
     }
