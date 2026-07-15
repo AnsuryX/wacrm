@@ -56,3 +56,6 @@ scopes. Give an assistant a read-only key and read-only config and it
 physically cannot send anything. See the
 [server README](../mcp-server/README.md) for the full tool list and
 safety model.
+
+For a longer usage guide and examples for Claude, Hermes, and HTTP/SSE
+agents, see [MCP usage guide](./mcp-usage.md).
