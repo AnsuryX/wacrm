@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Deal, Property, Booking } from '@/types';
+import { dispatchWebhookEvent } from '../webhooks/deliver';
 
 export interface ToolExecutionResult {
   success: boolean;
@@ -70,6 +71,11 @@ export async function executeAgentTool(
           .single();
 
         if (error) throw error;
+
+        // Dispatch outbound webhook for n8n/external systems
+        dispatchWebhookEvent(supabase, accountId, 'deal.stage_updated', deal)
+          .catch((err) => console.error('[AgentExecutor] Webhook dispatch error for deal.stage_updated:', err));
+
         return { success: true, tool: toolName, data: deal };
       }
 
@@ -224,6 +230,11 @@ export async function executeAgentTool(
           .single();
 
         if (error) throw error;
+
+        // Dispatch outbound webhook for n8n/external systems
+        dispatchWebhookEvent(supabase, accountId, 'booking.created', booking)
+          .catch((err) => console.error('[AgentExecutor] Webhook dispatch error for booking.created:', err));
+
         return { success: true, tool: toolName, data: booking };
       }
 

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { executeAgentTool } from './agent-executor';
 import { matchPropertiesForContact } from '../real-estate/PropertyMatcher';
+import { dispatchWebhookEvent } from '../webhooks/deliver';
 
 /**
  * Workflow 1: The Inbound Triage Agent
@@ -91,7 +92,17 @@ export async function handleInboundSmsReply(
   }
 
   if (Object.keys(updatePayload).length > 0) {
-    await supabase.from('contacts').update(updatePayload).eq('id', contactId);
+    const { data: contact } = await supabase
+      .from('contacts')
+      .update(updatePayload)
+      .eq('id', contactId)
+      .select('*')
+      .maybeSingle();
+
+    if (contact) {
+      dispatchWebhookEvent(supabase, accountId, 'contact.preferences_updated', contact)
+        .catch((err) => console.error('[TriageAgent] Webhook dispatch error for contact.preferences_updated:', err));
+    }
   }
 
   // 2) Trigger property matching engine to populate suggestion stack
