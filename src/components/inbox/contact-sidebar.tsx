@@ -15,6 +15,7 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -248,6 +249,59 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="my-4 border-t border-border" />
+
+          {/* AI Agent Activity Monitor */}
+          <div>
+            <div className="flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Bot className="h-4 w-4 text-primary" />
+              AI Agent Activity Log
+            </div>
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center justify-between rounded-lg bg-primary/5 border border-primary/20 px-3 py-1.5 text-xs">
+                <span className="font-semibold text-primary">Inbound Triage Bot</span>
+                <span className="inline-flex items-center rounded-full bg-green-500/15 px-2 py-0.5 text-[9px] font-bold text-green-400 animate-pulse">
+                  Active
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-primary/5 border border-primary/20 px-3 py-1.5 text-xs">
+                <span className="font-semibold text-primary">Booking Coordinator</span>
+                <span className="inline-flex items-center rounded-full bg-green-500/15 px-2 py-0.5 text-[9px] font-bold text-green-400 animate-pulse">
+                  Active
+                </span>
+              </div>
+
+              {/* Dynamic activity feed from contact notes starting with [CMA, [Sent Email, or custom logs */}
+              <div className="mt-3 space-y-1.5 max-h-[180px] overflow-y-auto">
+                {notes
+                  .filter((n) => n.note_text.startsWith("[") || n.note_text.includes("Confirmed!"))
+                  .map((n) => {
+                    const isCma = n.note_text.includes("CMA");
+                    const isEmail = n.note_text.includes("Email");
+                    const agentName = isCma ? "CMA Agent" : isEmail ? "Follow-Up Agent" : "AI Agent";
+                    return (
+                      <div key={n.id} className="p-2 rounded bg-muted/60 border border-primary/10 text-[10px] space-y-1 transition-all hover:bg-muted">
+                        <div className="flex justify-between font-bold text-primary">
+                          <span>{agentName}</span>
+                          <span className="text-muted-foreground font-normal">
+                            {format(new Date(n.created_at), "MMM d, HH:mm")}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground line-clamp-3 whitespace-pre-wrap">{n.note_text}</p>
+                      </div>
+                    );
+                  })}
+
+                {notes.filter((n) => n.note_text.startsWith("[") || n.note_text.includes("Confirmed!")).length === 0 && (
+                  <div className="p-2.5 rounded bg-muted/40 border border-border/40 text-[10px] space-y-1 text-center text-muted-foreground">
+                    <p>No recent autonomous agent activities. Standard manual triggers will log here.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

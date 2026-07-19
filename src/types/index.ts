@@ -403,6 +403,7 @@ export interface Deal {
   contact?: Contact;
   stage?: PipelineStage;
   assignee?: Profile;
+  property?: Property;
 
   // Real estate fields
   property_id?: string | null;

@@ -80,10 +80,28 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
         <span className="truncate text-xs text-muted-foreground">{contactLabel}</span>
       </div>
 
+      {/* Property Details */}
+      {deal.property && (
+        <div className="mt-1.5 text-xs text-muted-foreground truncate flex items-center gap-1">
+          <span className="text-primary">🏠</span>
+          <span className="truncate font-medium">{deal.property.address}</span>
+          <span className="shrink-0 text-[10px] bg-muted border border-border px-1.5 py-0.2 rounded text-[9px] uppercase font-bold">
+            {deal.property.source}
+          </span>
+        </div>
+      )}
+
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-sm font-bold text-primary">
-          {formatCurrency(deal.value, deal.currency)}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-primary">
+            {formatCurrency(deal.value, deal.currency)}
+          </span>
+          {deal.commission_expectation !== undefined && deal.commission_expectation !== null && (
+            <span className="text-[10px] text-muted-foreground/80 font-medium">
+              Comm: {formatCurrency(deal.commission_expectation, deal.currency)}
+            </span>
+          )}
+        </div>
         {deal.expected_close_date && (
           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Calendar className="h-3 w-3" />

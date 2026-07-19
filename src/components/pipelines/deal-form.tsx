@@ -12,6 +12,7 @@ import type {
   DealStatus,
   PipelineStage,
   Profile,
+  Property,
 } from "@/types";
 import {
   Sheet,
@@ -66,8 +67,13 @@ export function DealForm({
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Real estate state
+  const [propertyId, setPropertyId] = useState("");
+  const [commissionExpectation, setCommissionExpectation] = useState("");
+
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [linkedConversation, setLinkedConversation] =
     useState<Conversation | null>(null);
 
@@ -94,6 +100,8 @@ export function DealForm({
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
       setNotes(deal.notes ?? "");
+      setPropertyId(deal.property_id ?? "");
+      setCommissionExpectation(deal.commission_expectation !== undefined && deal.commission_expectation !== null ? String(deal.commission_expectation) : "");
     } else {
       setTitle("");
       setValue("");
@@ -103,6 +111,8 @@ export function DealForm({
       setAssignedTo("");
       setExpectedCloseDate("");
       setNotes("");
+      setPropertyId("");
+      setCommissionExpectation("");
     }
   }, [open, deal, defaultStageId, stages, defaultCurrency]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -112,13 +122,15 @@ export function DealForm({
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const [c, p] = await Promise.all([
+      const [c, p, pr] = await Promise.all([
         supabase.from("contacts").select("*").order("name"),
         supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("properties").select("*").order("address"),
       ]);
       if (cancelled) return;
       setContacts((c.data ?? []) as Contact[]);
       setProfiles((p.data ?? []) as Profile[]);
+      setProperties((pr.data ?? []) as Property[]);
     })();
     return () => {
       cancelled = true;
@@ -168,6 +180,8 @@ export function DealForm({
       assigned_to: assignedTo || null,
       notes: notes.trim() || null,
       expected_close_date: expectedCloseDate || null,
+      property_id: propertyId || null,
+      commission_expectation: parseFloat(commissionExpectation) || null,
     };
 
     if (deal) {
@@ -295,6 +309,22 @@ export function DealForm({
               )}
             </div>
 
+            <div className="grid gap-2">
+              <Label className="text-muted-foreground">Property</Label>
+              <select
+                value={propertyId}
+                onChange={(e) => setPropertyId(e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Select Associated Property (Optional)</option>
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.address} ({p.source}) - ${p.price.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="grid grid-cols-[1fr_110px] gap-3">
               <div className="grid gap-2">
                 <Label className="text-muted-foreground">{t("value")}</Label>
@@ -322,6 +352,20 @@ export function DealForm({
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-muted-foreground">Commission Expectation</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={commissionExpectation}
+                  onChange={(e) => setCommissionExpectation(e.target.value)}
+                  placeholder="0"
+                  className="border-border bg-muted pl-7 text-foreground"
+                />
               </div>
             </div>
 
@@ -375,6 +419,72 @@ export function DealForm({
                 className="min-h-[100px] border-border bg-muted text-foreground"
               />
             </div>
+
+            {deal && (
+              <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <h4 className="text-sm font-bold text-primary flex items-center gap-1.5">
+                  ✨ AI Suggested Matches ({(deal as any).suggested_property_ids?.length || 0})
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Automated property recommendations matching this contact's beds, baths, and budget preferences.
+                </p>
+
+                <div className="space-y-2 mt-2 max-h-[220px] overflow-y-auto">
+                  {properties
+                    .filter((p) => (deal as any).suggested_property_ids?.includes(p.id))
+                    .map((p) => {
+                      const isActive = propertyId === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`p-3 rounded-lg border text-xs flex flex-col gap-2 transition-all ${
+                            isActive
+                              ? "bg-primary/10 border-primary"
+                              : "bg-muted/70 border-border hover:bg-muted"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <span className="font-semibold text-foreground truncate max-w-[200px]">
+                              {p.address}
+                            </span>
+                            <span className="font-bold text-primary">${p.price.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                            <span>🛌 {p.beds || 0} Beds | 🛁 {p.baths || 0} Baths</span>
+                            <span className="uppercase font-semibold">{p.source}</span>
+                          </div>
+
+                          <div className="flex gap-1.5 mt-1">
+                            {!isActive ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => {
+                                  setPropertyId(p.id);
+                                  toast.success("Linked this property. Remember to Save Changes!");
+                                }}
+                                className="h-7 text-[10px] px-2.5 bg-primary text-primary-foreground"
+                              >
+                                Link as Deal Property
+                              </Button>
+                            ) : (
+                              <span className="text-[10px] text-green-400 font-semibold flex items-center gap-1">
+                                ✓ Currently Linked
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {properties.filter((p) => (deal as any).suggested_property_ids?.includes(p.id)).length === 0 && (
+                    <div className="text-center py-6 text-xs text-muted-foreground">
+                      No matches found. Update contact preferences (beds, baths, budget) to generate matches.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {deal && (
               <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-3">

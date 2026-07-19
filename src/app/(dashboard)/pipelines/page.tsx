@@ -39,10 +39,11 @@ import { useTranslations } from "next-intl";
 // Spec-defined seed — name and color per the product spec.
 const SPEC_DEFAULT_STAGES = [
   { name: "New Lead", color: "#3b82f6", position: 0 }, // blue
-  { name: "Qualified", color: "#eab308", position: 1 }, // yellow
-  { name: "Proposal Sent", color: "#f97316", position: 2 }, // orange
-  { name: "Negotiation", color: "#8b5cf6", position: 3 }, // purple
+  { name: "Qualified", color: "#10b981", position: 1 }, // green
+  { name: "Viewing Scheduled", color: "#f59e0b", position: 2 }, // amber/yellow
+  { name: "Offer Sent", color: "#8b5cf6", position: 3 }, // purple
   { name: "Won", color: "#22c55e", position: 4 }, // green
+  { name: "Lost", color: "#ef4444", position: 5 }, // red
 ];
 
 export default function PipelinesPage() {
@@ -101,7 +102,7 @@ export default function PipelinesPage() {
     async (pipelineId: string) => {
       const { data } = await supabase
         .from("deals")
-        .select("*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*)")
+        .select("*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*), property:properties(*)")
         .eq("pipeline_id", pipelineId)
         .order("created_at", { ascending: false });
       return (data ?? []) as Deal[];
