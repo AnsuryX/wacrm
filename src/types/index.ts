@@ -96,6 +96,22 @@ export interface AccountInvitation {
   accepted_by_user_id: string | null;
 }
 
+export interface StandardLead {
+  name: string;
+  phone: string;
+  email: string;
+  source: string;
+  message: string;
+  budget_min?: number;
+  budget_max?: number;
+  preferred_locations: string[];
+  requirements_beds?: number;
+  requirements_baths?: number;
+  requirements_property_type?: string;
+}
+
+export type ContactType = 'Buyer' | 'Seller' | 'Renter' | 'Agent';
+
 export interface Contact {
   id: string;
   user_id: string;
@@ -113,6 +129,16 @@ export interface Contact {
   /** Hydrated by queries that embed `contact_tags(tags(*))` (e.g. the
    *  Inbox conversation list, for tag filtering). Absent otherwise. */
   tags?: Tag[];
+
+  // Real estate fields
+  type?: ContactType;
+  lead_source?: string;
+  budget_min?: number;
+  budget_max?: number;
+  preferred_locations?: string[];
+  requirements_beds?: number;
+  requirements_baths?: number;
+  requirements_property_type?: string;
 }
 
 export interface Tag {
@@ -352,6 +378,7 @@ export interface PipelineStage {
 }
 
 export type DealStatus = 'open' | 'won' | 'lost';
+export type RealEstateDealStage = 'New Lead' | 'Qualified' | 'Viewing Scheduled' | 'Offer Sent' | 'Won' | 'Lost';
 
 export interface Deal {
   id: string;
@@ -376,6 +403,53 @@ export interface Deal {
   contact?: Contact;
   stage?: PipelineStage;
   assignee?: Profile;
+
+  // Real estate fields
+  property_id?: string | null;
+  stage_text?: RealEstateDealStage; // Maps to stage column in DB (renamed stage_text on interface to avoid conflict with stage?: PipelineStage)
+  commission_expectation?: number;
+  last_activity_at?: string;
+  suggested_property_ids?: string[];
+}
+
+export type PropertySource = 'MLS' | 'Property Finder' | 'Bayut' | 'Internal';
+export type PropertyStatus = 'Active' | 'Pending' | 'Sold' | 'Off-Market';
+
+export interface Property {
+  id: string;
+  account_id: string;
+  user_id?: string | null;
+  source: PropertySource;
+  source_id?: string | null;
+  address: string;
+  coordinates_lat?: number | null;
+  coordinates_lng?: number | null;
+  price: number;
+  beds?: number | null;
+  baths?: number | null;
+  status: PropertyStatus;
+  features?: string[];
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type BookingStatus = 'Scheduled' | 'Completed' | 'Cancelled' | 'No-Show';
+
+export interface Booking {
+  id: string;
+  account_id: string;
+  deal_id?: string | null;
+  agent_id?: string | null;
+  contact_id: string;
+  property_id: string;
+  scheduled_time: string;
+  feedback_notes?: string | null;
+  status: BookingStatus;
+  created_at: string;
+  updated_at: string;
+  contact?: Contact;
+  property?: Property;
 }
 
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';

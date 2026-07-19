@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RealEstateAiToolsSchema",
+  "description": "JSON Schema defining tools available to the Autonomous Real Estate CRM AI Agent Loop",
+  "type": "object",
+  "properties": {
+    "create_deal": {
+      "type": "object",
+      "description": "Create a new sales/rental deal linked to a contact and optionally a property",
+      "properties": {
+        "contact_id": { "type": "string", "format": "uuid", "description": "ID of the contact to link the deal to" },
+        "title": { "type": "string", "description": "Title of the deal (e.g. John Doe - Studio Pearl)" },
+        "value": { "type": "number", "description": "The estimated financial value of the deal" },
+        "property_id": { "type": "string", "format": "uuid", "description": "Optional ID of the property associated with this deal" },
+        "notes": { "type": "string", "description": "Any initial notes about the deal" }
+      },
+      "required": ["contact_id", "title"]
+    },
+    "update_deal_stage": {
+      "type": "object",
+      "description": "Move an existing deal to a new stage in the real estate sales pipeline",
+      "properties": {
+        "deal_id": { "type": "string", "format": "uuid", "description": "ID of the deal to update" },
+        "stage": {
+          "type": "string",
+          "enum": ["New Lead", "Qualified", "Viewing Scheduled", "Offer Sent", "Won", "Lost"],
+          "description": "The target pipeline stage to move the deal into"
+        }
+      },
+      "required": ["deal_id", "stage"]
+    },
+    "send_sms_via_twilio": {
+      "type": "object",
+      "description": "Send an automated qualification or follow-up SMS message to a contact phone number using Twilio",
+      "properties": {
+        "contact_id": { "type": "string", "format": "uuid", "description": "ID of the contact to send the SMS to" },
+        "message": { "type": "string", "description": "The plain text body content of the SMS" }
+      },
+      "required": ["contact_id", "message"]
+    },
+    "send_email": {
+      "type": "object",
+      "description": "Send a professional email/proposal to a contact",
+      "properties": {
+        "contact_id": { "type": "string", "format": "uuid", "description": "ID of the contact" },
+        "subject": { "type": "string", "description": "Subject line of the email" },
+        "body": { "type": "string", "description": "HTML or plain text body content of the email" }
+      },
+      "required": ["contact_id", "subject", "body"]
+    },
+    "schedule_viewing": {
+      "type": "object",
+      "description": "Schedule a property viewing appointment/booking slot for a contact and property",
+      "properties": {
+        "contact_id": { "type": "string", "format": "uuid", "description": "ID of the contact viewing the property" },
+        "property_id": { "type": "string", "format": "uuid", "description": "ID of the property to be viewed" },
+        "scheduled_time": { "type": "string", "format": "date-time", "description": "ISO-8601 timestamp representing the booking date and time" },
+        "deal_id": { "type": "string", "format": "uuid", "description": "Optional associated Deal ID to link the booking to" },
+        "feedback_notes": { "type": "string", "description": "Any pre-viewing notes or requirements" }
+      },
+      "required": ["contact_id", "property_id", "scheduled_time"]
+    },
+    "pull_property_comps": {
+      "type": "object",
+      "description": "Retrieve comparable active or sold properties matching criteria within a 1-mile radius for valuation",
+      "properties": {
+        "property_id": { "type": "string", "format": "uuid", "description": "The base Property ID to pull comps against" },
+        "radius_miles": { "type": "number", "default": 1.0, "description": "The geographical radius in miles around the base property" }
+      },
+      "required": ["property_id"]
+    }
+  }
+}
