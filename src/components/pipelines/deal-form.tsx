@@ -423,15 +423,15 @@ export function DealForm({
             {deal && (
               <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
                 <h4 className="text-sm font-bold text-primary flex items-center gap-1.5">
-                  ✨ AI Suggested Matches ({(deal as any).suggested_property_ids?.length || 0})
+                  ✨ AI Suggested Matches ({deal.suggested_property_ids?.length || 0})
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Automated property recommendations matching this contact's beds, baths, and budget preferences.
+                  Automated property recommendations matching this contact&apos;s beds, baths, and budget preferences.
                 </p>
 
                 <div className="space-y-2 mt-2 max-h-[220px] overflow-y-auto">
                   {properties
-                    .filter((p) => (deal as any).suggested_property_ids?.includes(p.id))
+                    .filter((p) => deal.suggested_property_ids?.includes(p.id))
                     .map((p) => {
                       const isActive = propertyId === p.id;
                       return (
@@ -477,7 +477,7 @@ export function DealForm({
                       );
                     })}
 
-                  {properties.filter((p) => (deal as any).suggested_property_ids?.includes(p.id)).length === 0 && (
+                  {properties.filter((p) => deal.suggested_property_ids?.includes(p.id)).length === 0 && (
                     <div className="text-center py-6 text-xs text-muted-foreground">
                       No matches found. Update contact preferences (beds, baths, budget) to generate matches.
                     </div>

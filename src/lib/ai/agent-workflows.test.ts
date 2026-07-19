@@ -53,6 +53,7 @@ describe('Agent Workflows', () => {
         neq: vi.fn().mockReturnThis(),
         update: vi.fn().mockReturnThis(),
         contains: vi.fn().mockReturnThis(),
+        insert: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn().mockResolvedValue({ data, error: null }),
         single: vi.fn().mockResolvedValue({ data, error: null }),
         then: (onfulfilled: any) => onfulfilled({ data, error: null }),

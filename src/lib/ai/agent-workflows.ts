@@ -2,31 +2,68 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { executeAgentTool } from './agent-executor';
 import { matchPropertiesForContact } from '../real-estate/PropertyMatcher';
 import { dispatchWebhookEvent } from '../webhooks/deliver';
+import type { Contact, Property, Deal } from '@/types';
+
+export interface AgentPersona {
+  name: string;
+  role: string;
+  tone: string;
+  greetingStyle: string;
+}
+
+export const AGENT_PERSONAS: Record<string, AgentPersona> = {
+  seraphina: {
+    name: "Seraphina",
+    role: "Elite Luxury Concierge (Pearl Qatar)",
+    tone: "Prestigiously polished, sophisticated, and highly professional",
+    greetingStyle: "Greetings of distinction! Seraphina here, your dedicated luxury advisor.",
+  },
+  marcus: {
+    name: "Marcus",
+    role: "High-Velocity MLS ROI Specialist",
+    tone: "Assertive, fast-moving, and focused strictly on the numbers/analytics",
+    greetingStyle: "Hey! Marcus here, MLS pricing specialist. Let's talk value.",
+  },
+  yasmin: {
+    name: "Yasmin",
+    role: "Relocation & Family Home Guide",
+    tone: "Empathetic, warm, neighborhood-focused, and highly detailed",
+    greetingStyle: "Hello! Yasmin here, delighted to guide your family property search.",
+  }
+};
 
 /**
  * Workflow 1: The Inbound Triage Agent
  * Trigger: New lead webhook received.
- * Action: Analyze message/metadata, construct qualification SMS, and dispatch via Twilio.
+ * Action: Analyze message/metadata, select persona, construct qualification SMS, and dispatch via Twilio.
  */
 export async function triggerInboundTriageAgent(
   supabase: SupabaseClient,
   accountId: string,
   contactId: string,
-  dealId: string,
+  _dealId: string,
   messageText: string,
   contactName: string
 ): Promise<void> {
   console.log(`[TriageAgent] Starting inbound triage for lead: ${contactName} (Contact: ${contactId})`);
 
-  // 1) Analyze message metadata to construct a highly targeted qualification SMS
+  const lowerMsg = (messageText || '').toLowerCase();
+
+  // 1) Persona Selection Logic based on Property context / Source
+  let persona = AGENT_PERSONAS.yasmin; // Default warm advisor
   let propertyContext = 'the property';
-  if (messageText && messageText.toLowerCase().includes('pearl')) {
+
+  if (lowerMsg.includes('pearl') || lowerMsg.includes('luxury')) {
+    persona = AGENT_PERSONAS.seraphina;
     propertyContext = 'the beautiful listing in Pearl Qatar';
-  } else if (messageText && messageText.toLowerCase().includes('west bay')) {
-    propertyContext = 'the luxury apartment in West Bay';
+  } else if (lowerMsg.includes('mls') || lowerMsg.includes('zillow') || lowerMsg.includes('realtor')) {
+    persona = AGENT_PERSONAS.marcus;
+    propertyContext = 'the high-yield active MLS listing';
+  } else if (lowerMsg.includes('west bay')) {
+    propertyContext = 'the premium apartment in West Bay';
   }
 
-  const qualificationSms = `Hey ${contactName}, saw you were looking at ${propertyContext}. Are you looking to move in the next 30 days or just browsing?`;
+  const qualificationSms = `${persona.greetingStyle} Saw you were looking at ${propertyContext}. Under my role as ${persona.role}, I'd love to ask: Are you looking to move in the next 30 days or just browsing?`;
 
   // 2) Execute send_sms_via_twilio tool to store in DB (WebSocket updates live agent chat)
   const result = await executeAgentTool(supabase, accountId, 'send_sms_via_twilio', {
@@ -40,8 +77,8 @@ export async function triggerInboundTriageAgent(
 }
 
 /**
- * Loop of Workflow 1: Parse inbound SMS reply, extract intent/budget,
- * programmatically update Contact, and shift stage to 'Qualified' if ready.
+ * Loop of Workflow 1: Parse inbound SMS reply, extract intent/budget/sentiment,
+ * programmatically update Contact and tags, and shift stage to 'Qualified' if ready.
  */
 export async function handleInboundSmsReply(
   supabase: SupabaseClient,
@@ -55,7 +92,24 @@ export async function handleInboundSmsReply(
   let budgetMax: number | undefined;
   let isQualified = false;
 
-  // Simple, robust extraction of intent / qualification keywords
+  // 1) Sentiment and Intent classification
+  let sentiment = 'Neutral';
+  let sentimentTag = 'sentiment:neutral';
+
+  if (lowerText.includes('excited') || lowerText.includes('love') || lowerText.includes('perfect') || lowerText.includes('great')) {
+    sentiment = 'Excited / Enthusiastic';
+    sentimentTag = 'sentiment:excited';
+  } else if (lowerText.includes('price') || lowerText.includes('expensive') || lowerText.includes('cheap') || lowerText.includes('negotiable')) {
+    sentiment = 'Price-Sensitive / Analytical';
+    sentimentTag = 'sentiment:price-sensitive';
+  } else if (lowerText.includes('move') || lowerText.includes('urgent') || lowerText.includes('30 days') || lowerText.includes('soon') || lowerText.includes('immediately')) {
+    sentiment = 'Urgent Moving Intent';
+    sentimentTag = 'sentiment:urgent';
+  } else if (lowerText.includes('not sure') || lowerText.includes('browsing') || lowerText.includes('maybe')) {
+    sentiment = 'Hesitant / Just Browsing';
+    sentimentTag = 'sentiment:hesitant';
+  }
+
   if (
     lowerText.includes('move') ||
     lowerText.includes('urgent') ||
@@ -72,7 +126,7 @@ export async function handleInboundSmsReply(
   // Extract simple budget numbers (e.g. 500k, 500000, 2m, 2000000)
   const budgetMatch = lowerText.match(/(?:budget|price|around)\s*(\$?\d+[\d,]*\s*[km]?)/);
   if (budgetMatch) {
-    let rawAmount = budgetMatch[1].replace(/[$,\s]/g, '').toLowerCase();
+    const rawAmount = budgetMatch[1].replace(/[$,\s]/g, '').toLowerCase();
     if (rawAmount.endsWith('k')) {
       budgetMax = parseFloat(rawAmount) * 1000;
     } else if (rawAmount.endsWith('m')) {
@@ -82,8 +136,8 @@ export async function handleInboundSmsReply(
     }
   }
 
-  // 1) Update Contact preferences in DB
-  const updatePayload: any = {};
+  // 2) Update Contact preferences in DB
+  const updatePayload: Partial<Contact> = {};
   if (budgetMax) {
     updatePayload.budget_max = budgetMax;
   }
@@ -104,6 +158,15 @@ export async function handleInboundSmsReply(
         .catch((err) => console.error('[TriageAgent] Webhook dispatch error for contact.preferences_updated:', err));
     }
   }
+
+  // 3) Store Sentiment & Agent detail captures as a Contact Note for the Live Activity Log
+  const defaultUser = '00000000-0000-0000-0000-000000000000';
+  await supabase.from('contact_notes').insert({
+    contact_id: contactId,
+    account_id: accountId,
+    user_id: defaultUser,
+    note_text: `[AI Sentiment Report]\nProspect Reply: "${replyText}"\nDetected Sentiment: ${sentiment} (${sentimentTag})\nStatus: ${isQualified ? 'Qualified Lead' : 'Browsing'}\nRe-evaluated budget: $${budgetMax?.toLocaleString() || 'Unchanged'}`,
+  });
 
   // 2) Trigger property matching engine to populate suggestion stack
   await matchPropertiesForContact(supabase, accountId, contactId);
@@ -130,6 +193,10 @@ export async function handleInboundSmsReply(
       }
     }
   }
+}
+
+interface StuckDeal extends Deal {
+  contacts?: Contact | null;
 }
 
 /**
@@ -162,7 +229,7 @@ export async function runAutonomousFollowUpAgent(
 
   console.log(`[FollowUpAgent] Found ${stuckDeals.length} stuck deals to process`);
 
-  for (const deal of stuckDeals) {
+  for (const deal of (stuckDeals as StuckDeal[])) {
     const contact = deal.contacts;
     if (!contact || !contact.id) continue;
 
@@ -226,8 +293,7 @@ export async function runAutonomousFollowUpAgent(
 export async function generateInstantCma(
   supabase: SupabaseClient,
   accountId: string,
-  propertyId: string,
-  dealId?: string
+  propertyId: string
 ): Promise<string> {
   console.log(`[CmaAgent] Generating instant CMA report for property: ${propertyId}`);
 
@@ -244,7 +310,7 @@ export async function generateInstantCma(
   const { reference_property, average_comp_price, comps } = compResult.data;
 
   // 2) Calculate average price metrics
-  const compsList = comps as any[];
+  const compsList = comps as Property[];
   const referencePrice = reference_property.price;
   const priceDiffPercentage = average_comp_price
     ? (((average_comp_price - referencePrice) / referencePrice) * 100).toFixed(1)
@@ -287,7 +353,6 @@ Ansury Systems AI Real Estate Advisor
   `.trim();
 
   // 3) Save report to Deal notes or Contact Notes (acting as Deal Document repository)
-  const contactId = reference_property.user_id; // optional fallback contact
   await supabase.from('contact_notes').insert({
     contact_id: reference_property.contact_id || '00000000-0000-0000-0000-000000000000', // links to default or placeholder
     account_id: accountId,
@@ -338,7 +403,7 @@ export async function coordinateBookingViewing(
   }
 
   // Parse booking time: "this Friday afternoon"
-  let scheduledTime = new Date();
+  const scheduledTime = new Date();
   scheduledTime.setDate(scheduledTime.getDate() + ((5 + 7 - scheduledTime.getDay()) % 7)); // Next Friday
   scheduledTime.setHours(15, 0, 0, 0); // Friday 3:00 PM afternoon
 
