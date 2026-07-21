@@ -61,6 +61,45 @@ export interface Account {
   updated_at: string;
 }
 
+// ============================================================
+// Real Estate CRM Upgrades (migration 038)
+// ============================================================
+
+export interface AgentPersona {
+  id: string;
+  account_id: string;
+  name: string;
+  role: string;
+  specialty_badge: string;
+  tone: string;
+  greeting_style: string;
+  connected_capabilities?: string[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Integration {
+  id: string;
+  account_id: string;
+  provider: 'google' | 'outlook' | 'cal';
+  credentials: Record<string, any>;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FlowLog {
+  id: string;
+  account_id: string;
+  flow_id?: string | null;
+  run_id?: string | null;
+  node_key: string;
+  step_type: string;
+  payload: Record<string, any>;
+  created_at: string;
+}
+
 /**
  * Hydrated member row for the Settings → Members tab. Combines
  * the profile and its account_role for a single member of the
@@ -108,6 +147,7 @@ export interface StandardLead {
   requirements_beds?: number;
   requirements_baths?: number;
   requirements_property_type?: string;
+  active_persona_id?: string | null;
 }
 
 export type ContactType = 'Buyer' | 'Seller' | 'Renter' | 'Agent';
@@ -139,6 +179,7 @@ export interface Contact {
   requirements_beds?: number;
   requirements_baths?: number;
   requirements_property_type?: string;
+  active_persona_id?: string | null;
 }
 
 export interface Tag {
@@ -195,6 +236,7 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   contact?: Contact;
+  channel?: 'whatsapp' | 'sms' | 'email' | 'chat';
   /**
    * AI auto-reply state for this thread (migration 029 + 033):
    *  - `ai_autoreply_disabled` — the bot is paused here (a human took
@@ -257,6 +299,7 @@ export interface Message {
   status: MessageStatus;
   created_at: string;
   reply_to_message_id?: string;
+  channel?: 'whatsapp' | 'sms' | 'email' | 'chat';
   /**
    * Only set when `content_type === 'interactive'` — the stable id of
    * the button or list row the customer tapped. The Flows engine uses
@@ -411,6 +454,7 @@ export interface Deal {
   commission_expectation?: number;
   last_activity_at?: string;
   suggested_property_ids?: string[];
+  active_persona_id?: string | null;
 }
 
 export type PropertySource = 'MLS' | 'Property Finder' | 'Bayut' | 'Internal';
@@ -451,6 +495,8 @@ export interface Booking {
   updated_at: string;
   contact?: Contact;
   property?: Property;
+  external_event_id?: string | null;
+  integration_id?: string | null;
 }
 
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import type { Contact, Deal, ContactNote, Tag } from "@/types";
+import type { Contact, Deal, ContactNote, Tag, AgentPersona } from "@/types";
 import {
   Phone,
   Mail,
@@ -17,6 +17,7 @@ import {
   Plus,
   Bot,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
@@ -35,6 +36,8 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
+  const [personas, setPersonas] = useState<AgentPersona[]>([]);
+  const [activePersonaId, setActivePersonaId] = useState<string>("");
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
@@ -42,9 +45,10 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
     if (!contact) return;
 
     const supabase = createClient();
+    setActivePersonaId(contact.active_persona_id ?? "");
 
-    // Fetch deals, notes, and tags in parallel
-    const [dealsRes, notesRes, tagsRes] = await Promise.all([
+    // Fetch deals, notes, tags, and personas in parallel
+    const [dealsRes, notesRes, tagsRes, personasRes] = await Promise.all([
       supabase
         .from("deals")
         .select("*, stage:pipeline_stages(*)")
@@ -59,10 +63,15 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
         .from("contact_tags")
         .select("id, tag_id, tags(*)")
         .eq("contact_id", contact.id),
+      supabase
+        .from("agent_personas")
+        .select("*")
+        .eq("account_id", accountId),
     ]);
 
     if (dealsRes.data) setDeals(dealsRes.data);
     if (notesRes.data) setNotes(notesRes.data);
+    if (personasRes.data) setPersonas(personasRes.data as AgentPersona[]);
     if (tagsRes.data) {
       const mapped = tagsRes.data
         .filter((ct: Record<string, unknown>) => ct.tags)
@@ -154,6 +163,44 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
             {contact.company && (
               <p className="text-xs text-muted-foreground">{contact.company}</p>
             )}
+
+            {/* AI Agent Persona Switcher */}
+            <div className="mt-3 w-full border border-border bg-muted/40 p-2.5 rounded-lg flex flex-col gap-1.5 text-xs text-left">
+              <span className="font-semibold text-muted-foreground block text-[10px] uppercase flex items-center gap-1">
+                <Bot className="h-3 w-3 text-primary animate-pulse" />
+                Active AI Persona
+              </span>
+              <select
+                value={activePersonaId}
+                onChange={async (e) => {
+                  const nextId = e.target.value;
+                  setActivePersonaId(nextId);
+                  const supabase = createClient();
+                  const { error } = await supabase
+                    .from("contacts")
+                    .update({ active_persona_id: nextId || null })
+                    .eq("id", contact.id);
+
+                  if (error) {
+                    toast.error("Failed to reassign AI Persona.");
+                  } else {
+                    toast.success("AI Persona reassigned.");
+                    if (nextId) {
+                      const p = personas.find((x) => x.id === nextId);
+                      toast.info(`Now handled by ${p?.name || "AI"}.`);
+                    }
+                  }
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none focus:border-primary"
+              >
+                <option value="">No Active AI Persona (Human Only)</option>
+                {personas.filter(p => p.active).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.specialty_badge})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Phone */}
